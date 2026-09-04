@@ -5,6 +5,7 @@ import {
   CollectItem,
 } from '@/api/collect'
 import { getDictTree } from '@/api/dict'
+import { dedupCategories } from '@/utils/category'
 import { retryTask, exportTask } from '@/api/task'
 import { Button, Card, Spinner, Alert, Modal } from '@/components/ui'
 import { LessonDrawer } from '@/components/LessonDrawer'
@@ -137,7 +138,8 @@ export const CollectList: React.FC = () => {
       const res = await getDictTree('collectCategory,geektimeCategory')
       if (res) {
         setCollectCategory(res.collectCategory || [])
-        setGeektimeDirection(res.geektimeDirection || [])
+        const categories = res.geektimeCategory || []
+        setGeektimeDirection(dedupCategories(categories))
       }
     } catch (error) {
       console.error('Failed to load dict data', error)

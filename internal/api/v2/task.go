@@ -72,11 +72,12 @@ func (t *Task) List(c *gin.Context) {
 	if req.Keywords != "" {
 		tx = tx.Where("task_name LIKE ?", "%"+req.Keywords+"%")
 	}
-	tx = tx.Where("task_pid = ?", req.TaskPid)
 	tx = tx.Where("deleted_at = ?", 0)
 	if req.TaskPid != "" {
+		tx = tx.Where("task_pid = ?", req.TaskPid)
 		tx = tx.Order("id ASC")
 	} else {
+		tx = tx.Where("task_type = ?", service.TASK_TYPE_PRODUCT)
 		tx = tx.Order("id DESC")
 	}
 	if err := tx.Count(&ret.Count).
@@ -87,9 +88,13 @@ func (t *Task) List(c *gin.Context) {
 		return
 	}
 
+	statsMap := service.BatchSyncProductStatistics(ls)
+
 	for _, l := range ls {
 		var statistics task.TaskStatistics
-		if len(l.Statistics) > 0 {
+		if l.TaskType == service.TASK_TYPE_PRODUCT {
+			statistics = statsMap[l.TaskId]
+		} else if len(l.Statistics) > 0 {
 			_ = json.Unmarshal(l.Statistics, &statistics)
 		}
 		row := task.Task{
@@ -179,7 +184,9 @@ func (t *Task) Info(c *gin.Context) {
 		return
 	}
 	var statistics task.TaskStatistics
-	if len(l.Statistics) > 0 {
+	if l.TaskType == service.TASK_TYPE_PRODUCT {
+		statistics, _ = service.SyncProductStatistics(&l)
+	} else if len(l.Statistics) > 0 {
 		_ = json.Unmarshal(l.Statistics, &statistics)
 	}
 	var taskMessage task.TaskMessage
